@@ -36,11 +36,10 @@ export class AuthController {
         verifyDto.signature,
       );
 
-      // Set HTTP-only cookie for security
       response.cookie('auth-token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none',
+        secure: true,
+        sameSite: 'none', // front-end and back-end on differente urls
         partitioned: true,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       });
@@ -115,7 +114,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   logout(@Res({ passthrough: true }) response: Response): { success: boolean } {
-    response.clearCookie('auth-token');
+    response.clearCookie('auth-token', {
+      httpOnly: true,
+      secure: true,
+      partitioned: true,
+    });
     return { success: true };
   }
 

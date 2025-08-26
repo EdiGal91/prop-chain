@@ -117,6 +117,7 @@ export class AuthController {
     response.clearCookie('auth-token', {
       httpOnly: true,
       secure: true,
+      sameSite: 'none',
       partitioned: true,
     });
     return { success: true };

@@ -33,22 +33,6 @@ export function HomePage() {
             <h3>🔐 Secure Authentication</h3>
             <p>Sign in with your Ethereum wallet using SIWE protocol</p>
           </div>
-          <div className="feature-card">
-            <h3>⚡ Etherlink Network</h3>
-            <p>Fast and efficient transactions with low fees</p>
-          </div>
-          <div className="feature-card">
-            <h3>📷 Image Storage</h3>
-            <p>Upload and store property images securely</p>
-          </div>
-          <div className="feature-card">
-            <h3>🌍 Global Reach</h3>
-            <p>Manage properties from anywhere in the world</p>
-          </div>
-          <div className="feature-card">
-            <h3>🔄 Real-time Updates</h3>
-            <p>Instant updates and synchronization across all devices</p>
-          </div>
         </div>
       </div>
     </div>

@@ -2,6 +2,11 @@
   "name": "contracts",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "deploy": "npm run clean && npm run compile && hardhat ignition deploy ignition/modules/PropertyTokenization.ts --network etherlinkTestnet",
+    "compile": "hardhat compile",
+    "clean": "hardhat clean"
+  },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0"
   },

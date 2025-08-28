@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProperty } from "../../hooks/useProperty";
 import { useAuth } from "../../hooks/useAuth";
+import { useTokenization } from "../../hooks/useTokenization";
+import { useTokenBalance, useTokenInfo } from "../../hooks/useTokenBalance";
 import type { Property } from "../../types/property";
 
 export function PropertyDetailsPage() {
@@ -9,10 +11,23 @@ export function PropertyDetailsPage() {
   const { user } = useAuth();
   const { getProperty, deleteProperty, getPropertyImageUrl, isLoading, error } =
     useProperty();
+  const {
+    tokenizeProperty,
+    isTokenizing,
+    error: tokenizeError,
+  } = useTokenization();
   const navigate = useNavigate();
 
   const [property, setProperty] = useState<Property | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [showTokenizeForm, setShowTokenizeForm] = useState(false);
+  const [tokenAmount, setTokenAmount] = useState(100);
+
+  // Get token balance and info from blockchain
+  const { balance, refetch: refetchBalance } = useTokenBalance(
+    property?.tokenization?.tokenId
+  );
+  const { tokenName } = useTokenInfo(property?.tokenization?.tokenId);
 
   useEffect(() => {
     if (id) {
@@ -39,6 +54,21 @@ export function PropertyDetailsPage() {
       navigate("/properties");
     } catch (err) {
       console.error("Failed to delete property:", err);
+    }
+  };
+
+  const handleTokenize = async () => {
+    if (!property || !id) return;
+
+    try {
+      await tokenizeProperty(id, property.title, tokenAmount);
+      // Reload property data to show tokenization info
+      await loadProperty();
+      // Refetch blockchain balance
+      refetchBalance();
+      setShowTokenizeForm(false);
+    } catch (err) {
+      console.error("Failed to tokenize property:", err);
     }
   };
 
@@ -100,9 +130,20 @@ export function PropertyDetailsPage() {
           ← Back to Properties
         </button>
         {isOwner && (
-          <button onClick={handleDelete} className="delete-btn">
-            Delete
-          </button>
+          <div className="header-actions">
+            {!property.tokenization && (
+              <button
+                onClick={() => setShowTokenizeForm(true)}
+                className="tokenize-btn"
+                disabled={isTokenizing}
+              >
+                {isTokenizing ? "Tokenizing..." : "Tokenize Property"}
+              </button>
+            )}
+            <button onClick={handleDelete} className="delete-btn">
+              Delete
+            </button>
+          </div>
         )}
       </div>
 
@@ -133,6 +174,9 @@ export function PropertyDetailsPage() {
             <div className="detail-badges">
               <span className="badge badge-status">{property.status}</span>
               <span className="badge badge-area">{property.area} m²</span>
+              {property.tokenization && (
+                <span className="badge badge-tokenized">Tokenized</span>
+              )}
             </div>
             <div className="detail-location">
               <span>
@@ -170,9 +214,115 @@ export function PropertyDetailsPage() {
                 </span>
               </div>
             </div>
+
+            {property.tokenization && (
+              <div className="info-card">
+                <h3>Tokenization</h3>
+                <div className="info-row">
+                  <span className="info-label">Token ID</span>
+                  <span className="info-value">
+                    #{property.tokenization.tokenId}
+                  </span>
+                </div>
+                {tokenName && (
+                  <div className="info-row">
+                    <span className="info-label">Token Name</span>
+                    <span className="info-value">{tokenName}</span>
+                  </div>
+                )}
+                <div className="info-row">
+                  <span className="info-label">Total Supply</span>
+                  <span className="info-value">
+                    {property.tokenization.tokenAmount}
+                  </span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Your Balance</span>
+                  <span className="info-value">
+                    <strong>{balance} tokens</strong>
+                  </span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Contract</span>
+                  <span className="info-value contract-address">
+                    {property.tokenization.contractAddress}
+                  </span>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Transaction</span>
+                  <a
+                    href={`https://testnet.explorer.etherlink.com/tx/${property.tokenization.transactionHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="info-value tx-link"
+                  >
+                    View on Explorer ↗
+                  </a>
+                </div>
+                <div className="info-row">
+                  <span className="info-label">Tokenized</span>
+                  <span className="info-value">
+                    {formatDate(property.tokenization.tokenizedAt)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Tokenization Modal */}
+      {showTokenizeForm && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h2>Tokenize Property</h2>
+              <button
+                className="modal-close"
+                onClick={() => setShowTokenizeForm(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Create ERC-1155 tokens for your property.</p>
+              <div className="form-group">
+                <label>Number of Tokens</label>
+                <input
+                  type="number"
+                  value={tokenAmount}
+                  onChange={(e) => setTokenAmount(Number(e.target.value))}
+                  min="1"
+                  max="1000000"
+                  placeholder="e.g., 100"
+                />
+                <small>
+                  Choose how many tokens to create for this property
+                </small>
+              </div>
+              {tokenizeError && (
+                <div className="error-message">{tokenizeError}</div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn-secondary"
+                onClick={() => setShowTokenizeForm(false)}
+                disabled={isTokenizing}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleTokenize}
+                disabled={isTokenizing || tokenAmount < 1}
+              >
+                {isTokenizing ? "Tokenizing..." : "Tokenize"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

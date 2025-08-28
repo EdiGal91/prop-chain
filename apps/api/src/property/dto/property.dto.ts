@@ -6,6 +6,8 @@ import {
   IsEnum,
   ValidateNested,
   Min,
+  IsEthereumAddress,
+  IsPositive,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -33,26 +35,26 @@ export class CreatePropertyDto {
   area: number;
 }
 
-export class UpdatePropertyDto {
-  @IsOptional()
+export class TokenizePropertyDto {
+  @IsNumber()
+  @IsPositive()
+  tokenAmount: number;
+
   @IsString()
   @IsNotEmpty()
-  title?: string;
+  transactionHash: string;
 
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => AddressDto)
-  address?: AddressDto;
-
-  @IsOptional()
   @IsNumber()
-  @Min(0)
-  area?: number;
+  @IsPositive()
+  tokenId: number;
+}
 
-  @IsOptional()
-  @IsString()
-  @IsEnum(['active', 'sold', 'pending', 'withdrawn'])
-  status?: string;
+class TokenizationDto {
+  tokenId: number;
+  tokenAmount: number;
+  contractAddress: string;
+  transactionHash: string;
+  tokenizedAt: Date;
 }
 
 export class PropertyResponseDto {
@@ -63,6 +65,7 @@ export class PropertyResponseDto {
   area: number;
   status: string;
   hasImage: boolean;
+  tokenization?: TokenizationDto;
   createdAt: Date;
   updatedAt: Date;
 }

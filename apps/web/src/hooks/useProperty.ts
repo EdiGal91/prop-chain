@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import type {
   Property,
   CreatePropertyData,
-  PropertiesResponse,
+  TokenizePropertyData,
 } from "../types/property";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -77,7 +77,7 @@ export function useProperty() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/properties/my-properties`, {
+      const response = await fetch(`${API_BASE_URL}/properties`, {
         credentials: "include",
       });
 
@@ -120,36 +120,6 @@ export function useProperty() {
     }
   }, []);
 
-  const getAllProperties = useCallback(
-    async (page = 1, limit = 10): Promise<PropertiesResponse> => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/properties?page=${page}&limit=${limit}`,
-          {
-            credentials: "include",
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch properties");
-        }
-
-        return await response.json();
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch properties";
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
-
   const deleteProperty = useCallback(async (id: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
@@ -173,6 +143,42 @@ export function useProperty() {
     }
   }, []);
 
+  const tokenizeProperty = useCallback(
+    async (id: string, data: TokenizePropertyData): Promise<Property> => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/properties/${id}/tokenize`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(data),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to tokenize property");
+        }
+
+        return await response.json();
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to tokenize property";
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
   const getPropertyImageUrl = useCallback((id: string): string => {
     return `${API_BASE_URL}/properties/${id}/image`;
   }, []);
@@ -183,8 +189,8 @@ export function useProperty() {
     createProperty,
     getMyProperties,
     getProperty,
-    getAllProperties,
     deleteProperty,
+    tokenizeProperty,
     getPropertyImageUrl,
   };
 }

@@ -12,7 +12,7 @@ contract PropertyTokenization is ERC1155 {
     
     // Property information structure
     struct Property {
-        string propertyId;      // Off-chain property identifier (from backend)
+        bytes32 propertyIdHash; // Hash of off-chain property identifier (gas efficient)
         address owner;          // Property owner address
         uint256 totalSupply;    // Total tokens minted for this property
         bool exists;            // Whether property is registered
@@ -20,7 +20,8 @@ contract PropertyTokenization is ERC1155 {
     
     // Mappings
     mapping(uint256 => Property) public properties;
-    mapping(string => uint256) public propertyIdToTokenId;
+    mapping(bytes32 => uint256) public propertyHashToTokenId;
+    mapping(uint256 => string) private _tokenNames;
     
     // State variables
     uint256 private _currentTokenId;
@@ -40,28 +41,36 @@ contract PropertyTokenization is ERC1155 {
     /**
      * @dev Tokenize a property (register and mint tokens in one transaction)
      * @param propertyId The off-chain property identifier
+     * @param title Property title for token naming
      * @param amount Number of tokens to mint
      */
     function tokenizeProperty(
         string memory propertyId,
+        string memory title,
         uint256 amount
     ) external returns (uint256 tokenId) {
         require(bytes(propertyId).length > 0, "Property ID cannot be empty");
-        require(propertyIdToTokenId[propertyId] == 0, "Property already registered");
+        require(bytes(title).length > 0, "Property title cannot be empty");
         require(amount > 0, "Amount must be greater than 0");
+        
+        // Hash the property ID for gas efficiency
+        bytes32 propertyHash = keccak256(abi.encodePacked(propertyId));
+        require(propertyHashToTokenId[propertyHash] == 0, "Property already registered");
         
         // Create new token ID
         tokenId = _currentTokenId++;
         
         // Register the property
         properties[tokenId] = Property({
-            propertyId: propertyId,
+            propertyIdHash: propertyHash,
             owner: msg.sender,
             totalSupply: amount,
             exists: true
         });
         
-        propertyIdToTokenId[propertyId] = tokenId;
+        // Store token name and mapping
+        _tokenNames[tokenId] = string(abi.encodePacked("PropChain - ", title));
+        propertyHashToTokenId[propertyHash] = tokenId;
         
         // Mint tokens to the property owner
         _mint(msg.sender, tokenId, amount, "");
@@ -80,15 +89,6 @@ contract PropertyTokenization is ERC1155 {
     }
     
     /**
-     * @dev Get property token ID by off-chain property ID
-     */
-    function getTokenIdByPropertyId(string memory propertyId) external view returns (uint256) {
-        uint256 tokenId = propertyIdToTokenId[propertyId];
-        require(tokenId != 0, "Property not found");
-        return tokenId;
-    }
-    
-    /**
      * @dev Get token balance for a property
      */
     function getTokenBalance(address account, uint256 tokenId) external view returns (uint256) {
@@ -100,6 +100,33 @@ contract PropertyTokenization is ERC1155 {
      */
     function uri(uint256) public pure override returns (string memory) {
         return "";
+    }
+
+    /**
+     * @dev Returns the name of the token collection
+     */
+    function name() public pure returns (string memory) {
+        return "PropChain Properties";
+    }
+
+    /**
+     * @dev Returns the name of a specific token
+     * @param tokenId The token ID
+     */
+    function name(uint256 tokenId) public view returns (string memory) {
+        require(properties[tokenId].exists, "Property not registered");
+        return _tokenNames[tokenId];
+    }
+
+    /**
+     * @dev Get property token ID by property ID (for frontend convenience)
+     * @param propertyId The off-chain property identifier
+     */
+    function getTokenIdByPropertyId(string memory propertyId) external view returns (uint256) {
+        bytes32 propertyHash = keccak256(abi.encodePacked(propertyId));
+        uint256 tokenId = propertyHashToTokenId[propertyHash];
+        require(tokenId != 0, "Property not found");
+        return tokenId;
     }
     
     /**

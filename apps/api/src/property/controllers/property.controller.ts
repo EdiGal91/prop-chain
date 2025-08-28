@@ -19,8 +19,8 @@ import { Response } from 'express';
 import { PropertyService } from '../services/property.service';
 import {
   CreatePropertyDto,
-  UpdatePropertyDto,
   PropertyResponseDto,
+  TokenizePropertyDto,
 } from '../dto/property.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
@@ -65,23 +65,7 @@ export class PropertyController {
   }
 
   @Get()
-  async findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('issuer') issuer?: string,
-  ): Promise<{
-    properties: PropertyResponseDto[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 10;
-
-    return this.propertyService.findAll(pageNum, limitNum, issuer);
-  }
-
-  @Get('my-properties')
+  @UseGuards(JwtAuthGuard)
   async findMyProperties(
     @GetUser() user: JwtPayload,
   ): Promise<PropertyResponseDto[]> {
@@ -114,35 +98,13 @@ export class PropertyController {
     res.send(imageData.image);
   }
 
-  @Patch(':id')
-  @UseInterceptors(
-    FileInterceptor('image', {
-      limits: {
-        fileSize: 2 * 1024 * 1024, // 2MB
-      },
-      fileFilter: (req, file, callback) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-          return callback(
-            new BadRequestException('Only image files are allowed!'),
-            false,
-          );
-        }
-        callback(null, true);
-      },
-    }),
-  )
-  async update(
+  @Post(':id/tokenize')
+  async tokenizeProperty(
     @Param('id') id: string,
-    @Body() updatePropertyDto: UpdatePropertyDto,
+    @Body() tokenizeDto: TokenizePropertyDto,
     @GetUser() user: JwtPayload,
-    @UploadedFile() imageFile?: Express.Multer.File,
   ): Promise<PropertyResponseDto> {
-    return this.propertyService.update(
-      id,
-      updatePropertyDto,
-      user.address,
-      imageFile,
-    );
+    return this.propertyService.tokenizeProperty(id, tokenizeDto, user.address);
   }
 
   @Delete(':id')

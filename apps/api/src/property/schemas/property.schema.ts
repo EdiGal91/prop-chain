@@ -60,6 +60,26 @@ export class Property {
   })
   status: string;
 
+  // Tokenization fields
+  @Prop({
+    required: false,
+    _id: false,
+    type: {
+      tokenId: { type: Number, required: true },
+      tokenAmount: { type: Number, required: true },
+      contractAddress: { type: String, required: true },
+      transactionHash: { type: String, required: true },
+      tokenizedAt: { type: Date, required: true, default: Date.now },
+    },
+  })
+  tokenization?: {
+    tokenId: number;
+    tokenAmount: number;
+    contractAddress: string;
+    transactionHash: string;
+    tokenizedAt: Date;
+  };
+
   // Timestamps added automatically by timestamps: true
   createdAt?: Date;
   updatedAt?: Date;

@@ -3,6 +3,14 @@ export interface PropertyAddress {
   city: string;
 }
 
+export interface PropertyTokenization {
+  tokenId: number;
+  tokenAmount: number;
+  contractAddress: string;
+  transactionHash: string;
+  tokenizedAt: string;
+}
+
 export interface Property {
   id: string;
   issuer: string;
@@ -11,6 +19,7 @@ export interface Property {
   area: number;
   status: string;
   hasImage: boolean;
+  tokenization?: PropertyTokenization;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,9 +31,8 @@ export interface CreatePropertyData {
   image?: File;
 }
 
-export interface PropertiesResponse {
-  properties: Property[];
-  total: number;
-  page: number;
-  totalPages: number;
+export interface TokenizePropertyData {
+  tokenAmount: number;
+  transactionHash: string;
+  tokenId: number;
 }

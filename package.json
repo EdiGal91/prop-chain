@@ -5,11 +5,14 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "contracts",
-    "shared/*"
+    "contracts"
   ],
   "scripts": {
-    "dev": "concurrently -k \"npm run --workspace apps/web dev\" \"npm run --workspace apps/api start:dev\""
+    "dev": "concurrently -k -n \"web,api\" \"npm run --workspace apps/web dev\" \"npm run --workspace apps/api start:dev\"",
+    "build": "npm run build -w apps/api && npm run build -w apps/web",
+    "clean": "rm -rf apps/web/dist apps/api/dist",
+    "clean:build": "npm run clean && npm run build",
+    "deploy": "npm run deploy -w contracts"
   },
   "keywords": [],
   "author": "",

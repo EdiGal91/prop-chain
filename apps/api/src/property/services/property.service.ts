@@ -5,11 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { CONTRACTS } from '../../config/contracts';
 import { Property, PropertyDocument } from '../schemas/property.schema';
 import {
   CreatePropertyDto,
-  UpdatePropertyDto,
   PropertyResponseDto,
+  TokenizePropertyDto,
 } from '../dto/property.dto';
 
 @Injectable()
@@ -50,7 +51,6 @@ export class PropertyService {
       );
     }
 
-    // Update property with image
     property.image = {
       filename: `${Date.now()}-${imageFile.originalname}`,
       originalName: imageFile.originalname,
@@ -61,37 +61,6 @@ export class PropertyService {
 
     const savedProperty = await property.save();
     return this.toResponseDto(savedProperty);
-  }
-
-  async findAll(
-    page = 1,
-    limit = 10,
-    issuer?: string,
-  ): Promise<{
-    properties: PropertyResponseDto[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
-    const filter = issuer ? { issuer } : {};
-    const skip = (page - 1) * limit;
-
-    const [properties, total] = await Promise.all([
-      this.propertyModel
-        .find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
-      this.propertyModel.countDocuments(filter).exec(),
-    ]);
-
-    return {
-      properties: properties.map((property) => this.toResponseDto(property)),
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-    };
   }
 
   async findOne(id: string): Promise<PropertyResponseDto> {
@@ -111,46 +80,6 @@ export class PropertyService {
     return properties.map((property) => this.toResponseDto(property));
   }
 
-  async update(
-    id: string,
-    updatePropertyDto: UpdatePropertyDto,
-    issuer: string,
-    imageFile?: Express.Multer.File,
-  ): Promise<PropertyResponseDto> {
-    const property = await this.propertyModel.findById(id).exec();
-
-    if (!property) {
-      throw new NotFoundException('Property not found');
-    }
-
-    if (property.issuer !== issuer) {
-      throw new ForbiddenException('You can only update your own properties');
-    }
-
-    const updateData: any = { ...updatePropertyDto };
-
-    // Handle image update if provided
-    if (imageFile) {
-      if (imageFile.size > 2 * 1024 * 1024) {
-        throw new Error('Image size must be less than 2MB');
-      }
-
-      updateData.image = {
-        filename: `${Date.now()}-${imageFile.originalname}`,
-        originalName: imageFile.originalname,
-        mimeType: imageFile.mimetype,
-        size: imageFile.size,
-        data: imageFile.buffer,
-      };
-    }
-
-    const updatedProperty = await this.propertyModel
-      .findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
-      .exec();
-
-    return this.toResponseDto(updatedProperty!);
-  }
-
   async remove(id: string, issuer: string): Promise<void> {
     const property = await this.propertyModel.findById(id).exec();
 
@@ -163,6 +92,38 @@ export class PropertyService {
     }
 
     await this.propertyModel.findByIdAndDelete(id).exec();
+  }
+
+  async tokenizeProperty(
+    propertyId: string,
+    tokenizeDto: TokenizePropertyDto,
+    issuer: string,
+  ): Promise<PropertyResponseDto> {
+    const property = await this.propertyModel.findById(propertyId);
+
+    if (!property) {
+      throw new NotFoundException(`Property with ID ${propertyId} not found`);
+    }
+
+    if (property.issuer !== issuer) {
+      throw new ForbiddenException('You can only tokenize your own properties');
+    }
+
+    if (property.tokenization) {
+      throw new ForbiddenException('Property is already tokenized');
+    }
+
+    // Add tokenization data using shared contract configuration
+    property.tokenization = {
+      tokenId: tokenizeDto.tokenId,
+      tokenAmount: tokenizeDto.tokenAmount,
+      contractAddress: CONTRACTS.PROPERTY_TOKENIZATION,
+      transactionHash: tokenizeDto.transactionHash,
+      tokenizedAt: new Date(),
+    };
+
+    const savedProperty = await property.save();
+    return this.toResponseDto(savedProperty);
   }
 
   async getPropertyImage(
@@ -189,6 +150,7 @@ export class PropertyService {
       area: property.area,
       status: property.status,
       hasImage: !!property.image,
+      tokenization: property.tokenization,
       createdAt: property.createdAt!,
       updatedAt: property.updatedAt!,
     };

@@ -108,6 +108,9 @@ export function PropertiesPage() {
                 <div className="property-badges">
                   <span className="pill pill-area">{property.area} m²</span>
                   <span className="pill pill-status">{property.status}</span>
+                  {property.tokenization && (
+                    <span className="pill pill-tokenized">Tokenized</span>
+                  )}
                 </div>
               </div>
 
